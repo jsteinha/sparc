@@ -45,10 +45,14 @@ for c=1:Num_clusters
     counts(c) = sum(zs==c);
 end
 
-Num_steps = 100000;
+Num_steps = 300000;
 
+global conc u0 s0 dof dof2;
 conc = 1.0; % concentration parameter for the Dirichlet prior
-dof = Dimension + 2; % degree-of-freedom parameter for the Wishart prior
+u0 = zeros(Dimension,1);
+s0 = eye(Dimension);
+dof = 2.1; % degree-of-freedom parameter for the Wishart prior
+dof2 = 0.1;
 
 for t=1:Num_steps
     % MCMC step: pick a data point at random and propose to move it to a new
@@ -56,12 +60,12 @@ for t=1:Num_steps
     index = randi(Data_size);
     datum = Data(:,index);
     cur_cluster = zs(index);
-    prop_cluster = randi(Num_clusters);
-    mean = @(c) mus(:,c)/(counts(c)+dof);
-    cov = @(c) (Js(:,:,c)-mus(:,c)*mus(:,c)'/(counts(c)+1e-12) + ...
-        dof*eye(Dimension))/(counts(c)+dof);
+    prop_cluster = randi(Num_clusters+1);
+%    mean = @(c) mus(:,c)/(counts(c)+dof);
+%    cov = @(c) (Js(:,:,c)-mus(:,c)*mus(:,c)'/(counts(c)+1e-12) + ...
+%        dof*eye(Dimension))/(counts(c)+dof);
 %    logscorer = @(c) -0.5*(datum-mean(c))'*cov(c)*(datum-mean(c)) + log(counts(c)+conc) + 0.5*log(det(cov(c)/(2*pi)));
-    logscorer = @(c) log(mvtpdf(datum-mean(c),cov(c),counts(c)+dof)) + log(counts(c)+conc);
+    logscorer = @(c) logpdf(datum,mus(:,c),Js(:,:,c),counts(c));
     cur_cluster_logscore = logscorer(cur_cluster);
     prop_cluster_logscore = logscorer(prop_cluster);
     if log(rand()) < prop_cluster_logscore - cur_cluster_logscore
@@ -76,18 +80,22 @@ for t=1:Num_steps
     else
 %        disp('Rejected')
     end
-    if mod(t,1000) == 0
-        mu1=mean(1); mu2=mean(2); mu3=mean(3);
+    if mod(t,3000) == 0
+        getmean=@(c)getmu(mus(:,c),counts(c));
+        getcov=@(c)getsig(mus(:,c),Js(:,:,c),counts(c));
+        mu1=getmean(1);
+        mu2=getmean(2);
+        mu3=getmean(3);
         fprintf(1,'trial %d, mu1=(%f,%f), mu2=(%f,%f), mu3=(%f,%f)\n',t,mu1(1),mu1(2),...
             mu2(1),mu2(2),mu3(1),mu3(2));
         clf;
         hold on;
         plot(Data(1,logical(zs==1)),Data(2,logical(zs==1)),'r.','Markersize',1);
-        drawgaussian(mean(1),cov(1),'r');
+        drawgaussian(mu1,getcov(1),'r');
         plot(Data(1,logical(zs==2)),Data(2,logical(zs==2)),'g.','Markersize',1);
-        drawgaussian(mean(2),cov(2),'g');
+        drawgaussian(mu2,getcov(2),'g');
         plot(Data(1,logical(zs==3)),Data(2,logical(zs==3)),'b.','Markersize',1);
-        drawgaussian(mean(3),cov(3),'b');
+        drawgaussian(mu3,getcov(3),'b');
         drawnow;
 %        pause;
     end
