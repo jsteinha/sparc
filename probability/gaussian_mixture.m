@@ -60,7 +60,7 @@ for t=1:Num_steps
     index = randi(Data_size);
     datum = Data(:,index);
     cur_cluster = zs(index);
-    prop_cluster = randi(Num_clusters+1);
+    prop_cluster = randi(Num_clusters);
 %    mean = @(c) mus(:,c)/(counts(c)+dof);
 %    cov = @(c) (Js(:,:,c)-mus(:,c)*mus(:,c)'/(counts(c)+1e-12) + ...
 %        dof*eye(Dimension))/(counts(c)+dof);
